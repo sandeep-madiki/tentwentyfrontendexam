@@ -11,3 +11,10 @@ A simple timesheet management application built with **Next.js**, allowing users
 git clone <repository-url>
 cd <project-folder>
 
+### 2. Install dependies
+```bash
+npm install
+
+### 3. Start server
+```bash
+npm run dev
