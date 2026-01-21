@@ -18,3 +18,16 @@ npm install
 ### 3. Start server
 ```bash
 npm run dev
+
+
+Frameworks & Libraries Used
+
+Next.js 16 – React framework used for routing, server-side rendering, and API routes
+TypeScript – For type safety and better developer experience
+Tailwind CSS – Utility-first CSS framework for rapid and responsive UI development
+NextAuth.js – Used for implementing authentication with a credentials provider (dummy authentication)
+
+
+Time Spent
+
+Approximately 6–8 hours
