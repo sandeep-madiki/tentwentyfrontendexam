@@ -23,24 +23,52 @@ export default function DashboardPage() {
   const [selectedTimesheet, setSelectedTimesheet] = useState<Timesheet | null>(
     null,
   );
+  const [currentWeekTimesheet, setCurrentWeekTimesheet] =
+    useState<Timesheet | null>(null);
+
+  const resolveCurrentWeekTimesheet = (
+    sheets: Timesheet[],
+    selected: Timesheet | null,
+  ) => {
+    if (selected) {
+      return sheets.find((t) => t.id === selected.id) || sheets[0] || null;
+    }
+
+    const today = new Date();
+    return (
+      sheets.find((t) => {
+        const start = new Date(t.startDate);
+        const end = new Date(t.endDate);
+        return today >= start && today <= end;
+      }) ||
+      sheets[0] ||
+      null
+    );
+  };
+
   const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [modalDate, setModalDate] = useState<string | undefined>(undefined);
   const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchTimesheets = useCallback(async () => {
-    try {
-      const res = await fetch("/api/timesheets");
-      if (!res.ok) throw new Error("Failed to fetch timesheets");
-      const data = await res.json();
-      setTimesheets(data);
-    } catch (error) {
-      console.error("Error fetching timesheets:", error);
-    }
-  }, []);
+    const res = await fetch("/api/timesheets");
+    const data = await res.json();
+
+    setTimesheets(data);
+    setCurrentWeekTimesheet(
+      resolveCurrentWeekTimesheet(data, selectedTimesheet),
+    );
+  }, [selectedTimesheet]);
 
   useEffect(() => {
     void fetchTimesheets();
   }, [fetchTimesheets]);
+
+  useEffect(() => {
+    setCurrentWeekTimesheet(
+      resolveCurrentWeekTimesheet(timesheets, selectedTimesheet),
+    );
+  }, [timesheets, selectedTimesheet]);
 
   const calculateStatus = (
     entries: TimesheetEntry[],
@@ -75,35 +103,6 @@ export default function DashboardPage() {
     }
 
     try {
-      setTimesheets((prevTimesheets) => {
-        const timesheetIndex = prevTimesheets.findIndex(
-          (t) => t.id === timesheetId,
-        );
-        if (timesheetIndex === -1) return prevTimesheets;
-
-        const updatedTimesheets = [...prevTimesheets];
-        const currentTimesheet = { ...updatedTimesheets[timesheetIndex] };
-
-        if (entryId && !entryId.startsWith("new-")) {
-          const entryIndex = currentTimesheet.entries.findIndex(
-            (e) => e.id === entryId,
-          );
-          if (entryIndex !== -1) {
-            currentTimesheet.entries[entryIndex] = { ...data, id: entryId };
-          }
-        } else {
-          const newEntry: TimesheetEntry = {
-            ...data,
-            id: crypto.randomUUID(),
-          };
-          currentTimesheet.entries = [...currentTimesheet.entries, newEntry];
-        }
-
-        currentTimesheet.status = calculateStatus(currentTimesheet.entries);
-        updatedTimesheets[timesheetIndex] = currentTimesheet;
-        return updatedTimesheets;
-      });
-
       const response = await fetch("/api/timesheets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -114,16 +113,18 @@ export default function DashboardPage() {
         }),
       });
 
+      fetchTimesheets();
+
       if (!response.ok) {
         const error = await response.json();
         console.error("Error saving entry:", error);
         alert(error.error || "Failed to save entry");
-        await fetchTimesheets();
+        // await fetchTimesheets();
       }
     } catch (error) {
       console.error("Error saving entry:", error);
       alert("An error occurred while saving the entry");
-      await fetchTimesheets();
+      // await fetchTimesheets();
     } finally {
       setIsUpdating(false);
       setModalOpen(false);
@@ -212,21 +213,6 @@ export default function DashboardPage() {
       setViewMode("list");
     }
   };
-
-  const getCurrentWeekTimesheet = () => {
-    return (
-      selectedTimesheet ||
-      timesheets.find((t) => {
-        const today = new Date();
-        const start = new Date(t.startDate);
-        const end = new Date(t.endDate);
-        return today >= start && today <= end;
-      }) ||
-      timesheets[0]
-    );
-  };
-
-  const currentWeekTimesheet = getCurrentWeekTimesheet();
 
   return (
     <div className="min-h-screen bg-gray-50">
